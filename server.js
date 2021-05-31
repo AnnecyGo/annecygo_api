@@ -1,4 +1,4 @@
-var webSocketsServerPort = 1330; 
+var webSocketsServerPort = 1645; 
 
 var webSocketServer = require('websocket').server;
 var http = require('http');
@@ -40,6 +40,7 @@ class Player {
         this.connection = connection;
         this.name = "";
         this.roomCode = "";
+        this.admin = false;
     }
 }
 
@@ -71,6 +72,8 @@ wsServer.on('request', function(request) {
             case 'createNewGame':
                 // Create new player
                 let nPlayer = newPlayer(player, message.data, connection)
+                nPlayer.admin = true
+                savePlayer(nPlayer)
                 // Create new room
                 let room = createNewRoom()
                 // Add player to room
@@ -84,8 +87,8 @@ wsServer.on('request', function(request) {
             case 'joinGame':
                 
                 console.log(message)
-                //let resRoom = getRoom(message.data.code)
-                let resRoom = getRoom("room01")
+                let resRoom = getRoom(message.data.code)
+               // let resRoom = getRoom("room01")
                 if(resRoom) {
                     let nPlayer = newPlayer(player, message.data.name, connection)
                     addPlayerToRoom(resRoom, nPlayer)
@@ -93,6 +96,7 @@ wsServer.on('request', function(request) {
                     var message = JSON.stringify({'action': 'roomFound','data': nPlayer.name});
 
                     if(nPlayer.connection != null) {
+                        savePlayer(nPlayer)
                         nPlayer.connection.sendUTF(message);
                     }
 
@@ -106,6 +110,12 @@ wsServer.on('request', function(request) {
             case 'getPlayerList': 
                 if(message.data != null) {
                     BroadcastRoom(getRoom(message.data).code)
+                }
+                break;
+
+            case 'startGame': 
+                if(message.data != null) {
+                    startAllPlayerGame(getRoom(message.data))
                 }
                 break;
         }
@@ -157,6 +167,15 @@ function generateQRCODE(player) {
     player.connection.sendUTF(message);
 }
 
+function savePlayer(player) {
+    var message = JSON.stringify({'action': 'savePlayer','data': {"name": player.name, "admin": player.admin, "id": player.id}});
+
+    console.log("player " + player.name + " saved")
+    if(player.connection != null) {
+        player.connection.sendUTF(message);
+    }
+}
+
 // broadcast to players room
 function BroadcastRoom(code) {
     let room = getRoom(code)
@@ -164,7 +183,7 @@ function BroadcastRoom(code) {
     var playersId = []
 
     for(let player of room.playersList) {
-        playersId.push({"name": player.name});
+        playersId.push({"name": player.name, "admin": player.admin, "id": player.id});
     }
 
     var message = JSON.stringify({'action': 'players_list','data': playersId});
@@ -172,6 +191,15 @@ function BroadcastRoom(code) {
     for(let player of room.playersList) {
         console.log("send to " + player.name + " // room: " + code)
         if(player.connection != null) {
+            player.connection.sendUTF(message);
+        }
+    }
+}
+
+function startAllPlayerGame(room) {
+    for(let player of room.playerList) {
+        if(player.connection != null) {
+            var message = JSON.stringify({'action': 'startGame','data': null});
             player.connection.sendUTF(message);
         }
     }

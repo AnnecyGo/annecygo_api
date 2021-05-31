@@ -16,8 +16,12 @@ var playersList = [];
 var roomsList = [];
 
 class Room {
-    constructor() {
-        this.code = generateRoomToken();
+    constructor(code = null) {
+        if(code == null) {
+            this.code = generateRoomToken();
+        } else {
+            this.code = code
+        }
         this.playersList = [];
     }
 
@@ -39,6 +43,15 @@ class Player {
     }
 }
 
+var testRoom = new Room("room01")
+roomsList.push(testRoom)
+var playerOne = new Player("A123", null)
+playerOne.name = "PlayerOne"
+
+addPlayerToRoom(testRoom, playerOne)
+
+console.log(roomsList)
+
 wsServer.on('request', function(request) {
 
     console.log("request")
@@ -55,14 +68,9 @@ wsServer.on('request', function(request) {
 
         switch(message.action){
 
-            case 'join':
-                player.name = message.data;
-                BroadcastPlayersList();
-                break;
-
             case 'createNewGame':
                 // Create new player
-                let nPlayer = newPlayer(player, message, connection)
+                let nPlayer = newPlayer(player, message.data, connection)
                 // Create new room
                 let room = createNewRoom()
                 // Add player to room
@@ -72,41 +80,52 @@ wsServer.on('request', function(request) {
                 // Broadcast all players room
                 BroadcastRoom(room.code)
                 break;
-            
-        
-            case 'resign':
-                console.log('resigned');
-                Players[player.opponentIndex]
-                    .connection
-                    .sendUTF(JSON.stringify({'action':'resigned'}));
 
-                setTimeout(function(){
-                    Players[player.opponentIndex].opponentIndex = player.opponentIndex = null;
-                }, 0);
+            case 'joinGame':
+                
+                console.log(message)
+                //let resRoom = getRoom(message.data.code)
+                let resRoom = getRoom("room01")
+                if(resRoom) {
+                    let nPlayer = newPlayer(player, message.data.name, connection)
+                    addPlayerToRoom(resRoom, nPlayer)
+
+                    var message = JSON.stringify({'action': 'roomFound','data': nPlayer.name});
+
+                    if(nPlayer.connection != null) {
+                        nPlayer.connection.sendUTF(message);
+                    }
+
+                    BroadcastRoom(resRoom.code)
+                    console.log(resRoom)
+                } else {
+                    console.log("no room found")
+                }
                 break;
 
-
-            case 'new_game':
-                player.setOpponent(message.data);
-                Players[player.opponentIndex]
-                    .connection
-                    .sendUTF(JSON.stringify({'action':'new_game', 'data': player.name}));
-                break;
-
-            case 'play':
-                Players[player.opponentIndex]
-                    .connection
-                    .sendUTF(JSON.stringify({'action':'play', 'data': message.data}));
+            case 'getPlayerList': 
+                if(message.data != null) {
+                    BroadcastRoom(getRoom(message.data).code)
+                }
                 break;
         }
     });
 
     // user disconnected
     connection.on('close', function(connection) {
+        console.log("disconnected")
     // We need to remove the corresponding player
     // TODO
     });
 });
+
+function getRoom(code) {
+    for(let room of roomsList) {
+        if(room.code == code) {
+            return room
+        }
+    }
+}
 
 // create new room
 function createNewRoom() {
@@ -118,11 +137,15 @@ function createNewRoom() {
 function addPlayerToRoom(room, player) {
     room.addPlayer(player)
     player.roomCode = room.code
+    
+    if(player.connection != null) {
+        player.connection.sendUTF(JSON.stringify({action: 'joinRoom', code: room.code}));
+    }
 }
 
 // create new player
-function newPlayer(player, message, connection) {
-    player.name = message.data
+function newPlayer(player, name, connection) {
+    player.name = name
     player.connection = connection
     console.log('nouveau joueur: ' + player.name)
     playersList.push(player)
@@ -147,9 +170,10 @@ function BroadcastRoom(code) {
     var message = JSON.stringify({'action': 'players_list','data': playersId});
 
     for(let player of room.playersList) {
-        console.log("send to " + player.name)
-        console.log(player)
-        player.connection.sendUTF(message);
+        console.log("send to " + player.name + " // room: " + code)
+        if(player.connection != null) {
+            player.connection.sendUTF(message);
+        }
     }
 }
 

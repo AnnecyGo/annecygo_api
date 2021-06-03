@@ -41,6 +41,8 @@ class Player {
         this.name = "";
         this.roomCode = "";
         this.admin = false;
+        this.score = 0;
+        this.avatar = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/OOjs_UI_icon_userAvatar-constructive.svg/1200px-OOjs_UI_icon_userAvatar-constructive.svg.png"
     }
 }
 
@@ -168,7 +170,8 @@ function generateQRCODE(player) {
 }
 
 function savePlayer(player) {
-    var message = JSON.stringify({'action': 'savePlayer','data': {"name": player.name, "admin": player.admin, "id": player.id}});
+    var playerJson = {"name": player.name, "admin": player.admin, "id": player.id, "avatar": player.avatar}
+    var message = JSON.stringify({'action': 'savePlayer','data': playerJson});
 
     console.log("player " + player.name + " saved")
     if(player.connection != null) {
@@ -183,7 +186,7 @@ function BroadcastRoom(code) {
     var playersId = []
 
     for(let player of room.playersList) {
-        playersId.push({"name": player.name, "admin": player.admin, "id": player.id});
+        playersId.push({"name": player.name, "admin": player.admin, "id": player.id, "score": player.score});
     }
 
     var message = JSON.stringify({'action': 'players_list','data': playersId});

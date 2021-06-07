@@ -2,6 +2,7 @@ var webSocketsServerPort = 1645;
 
 var webSocketServer = require('websocket').server;
 var http = require('http');
+const axios = require('axios').default
 
 var server = http.createServer(function(request, response) {});
 server.listen(webSocketsServerPort, function() {
@@ -16,13 +17,14 @@ var playersList = [];
 var roomsList = [];
 
 class Room {
-    constructor(code = null) {
+    constructor(data, code = null) {
         if(code == null) {
             this.code = generateRoomToken();
         } else {
             this.code = code
         }
         this.playersList = [];
+        this.randomMonuments = data
     }
 
     get playerList() {
@@ -42,22 +44,21 @@ class Player {
         this.roomCode = "";
         this.admin = false;
         this.score = 0;
-        this.avatar = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/OOjs_UI_icon_userAvatar-constructive.svg/1200px-OOjs_UI_icon_userAvatar-constructive.svg.png"
+        this.avatar = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/OOjs_UI_icon_userAvatar-constructive.svg/1200px-OOjs_UI_icon_userAvatar-constructive.svg.png";
+        this.position = [0,0]
     }
 }
 
+/*
 var testRoom = new Room("room01")
 roomsList.push(testRoom)
 var playerOne = new Player("A123", null)
 playerOne.name = "PlayerOne"
-
 addPlayerToRoom(testRoom, playerOne)
-
 console.log(roomsList)
+*/
 
 wsServer.on('request', function(request) {
-
-    console.log("request")
 
     var player = new Player(request.key, connection);
     var connection = request.accept(null, request.origin); 
@@ -65,8 +66,6 @@ wsServer.on('request', function(request) {
     connection.sendUTF(JSON.stringify({action: 'connect', data: player.id}));
 
     connection.on('message', function(data) {
-
-        console.log('message')
         var message = JSON.parse(data.utf8Data);
 
         switch(message.action){
@@ -76,19 +75,24 @@ wsServer.on('request', function(request) {
                 let nPlayer = newPlayer(player, message.data, connection)
                 nPlayer.admin = true
                 savePlayer(nPlayer)
-                // Create new room
-                let room = createNewRoom()
-                // Add player to room
-                addPlayerToRoom(room, nPlayer)
-                // generate QR Code
-                generateQRCODE(nPlayer)
-                // Broadcast all players room
-                BroadcastRoom(room.code)
+
+                createNewRoom().then((room) => {
+                    // console.log(room)
+                    // Add player to room
+                    addPlayerToRoom(room, nPlayer)
+                    // generate QR Code
+                    generateQRCODE(nPlayer)
+                    // Broadcast all players room
+                    sendPlayersList(room.code)
+                    // console.log(room)
+                    sendMonuments(room.code)
+                })
+
                 break;
 
             case 'joinGame':
                 
-                console.log(message)
+                // console.log(message)
                 let resRoom = getRoom(message.data.code)
                // let resRoom = getRoom("room01")
                 if(resRoom) {
@@ -102,8 +106,8 @@ wsServer.on('request', function(request) {
                         nPlayer.connection.sendUTF(message);
                     }
 
-                    BroadcastRoom(resRoom.code)
-                    console.log(resRoom)
+                    sendPlayersList(resRoom.code)
+                    // console.log(resRoom)
                 } else {
                     console.log("no room found")
                 }
@@ -111,7 +115,13 @@ wsServer.on('request', function(request) {
 
             case 'getPlayerList': 
                 if(message.data != null) {
-                    BroadcastRoom(getRoom(message.data).code)
+                    sendPlayersList(getRoom(message.data).code)
+                }
+                break;
+
+            case 'getRoom':
+                if(message.data != null) {
+                    sendMonuments(getRoom(message.data).code)
                 }
                 break;
 
@@ -120,16 +130,48 @@ wsServer.on('request', function(request) {
                     startAllPlayerGame(getRoom(message.data))
                 }
                 break;
+
+            case "newGPSPosition":
+                console.log(message.data)
+                refreshPlayerPosition(getRoom(message.data.code), message.data.player, message.data.position)
+                break;
         }
     });
 
-    // user disconnected
     connection.on('close', function(connection) {
         console.log("disconnected")
-    // We need to remove the corresponding player
     // TODO
     });
 });
+
+function refreshPlayerPosition(room, player, position) {
+
+    for(let rPlayer of room.playersList) {
+        if(rPlayer.id == player) {
+            rPlayer.position = [position.latitude, position.longitude]
+        }
+    }
+
+    var message = JSON.stringify({'action': 'refreshPlayerPost','data': room.randomMonuments});
+
+    sendPlayersPosition(room.playersList)
+}
+
+function sendPlayersPosition(playersList) {
+    var posList = []
+
+    for(let player of playersList) {
+        posList.push({"name": player.name, "id": player.id, "position": player.position});
+    }
+
+    var message = JSON.stringify({'action': 'refreshPlayersPosition','data': posList});
+
+    for(let player of playersList) {
+        if(player.connection != null) {
+            player.connection.sendUTF(message);
+        }
+    }
+}
 
 function getRoom(code) {
     for(let room of roomsList) {
@@ -140,10 +182,15 @@ function getRoom(code) {
 }
 
 // create new room
-function createNewRoom() {
-    let room = new Room()
-    roomsList.push(room)
-    return room
+async function  createNewRoom() {
+    try {
+        let res = await axios.get('http://86.200.111.40:1332/annecyRandomMonuments')
+        let room = new Room(res.data)
+        roomsList.push(room)
+        return room
+    } catch (err) {
+        console.error(err);
+    }
 }
 
 function addPlayerToRoom(room, player) {
@@ -179,8 +226,20 @@ function savePlayer(player) {
     }
 }
 
-// broadcast to players room
-function BroadcastRoom(code) {
+function sendMonuments(code) {
+    console.log("send monuments")
+    let room = getRoom(code)
+
+    var message = JSON.stringify({'action': 'saveRoom','data': room.randomMonuments});
+
+    for(let player of room.playersList) {
+        if(player.connection != null) {
+            player.connection.sendUTF(message);
+        }
+    }
+}
+
+function sendPlayersList(code) {
     let room = getRoom(code)
 
     var playersId = []

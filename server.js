@@ -1,4 +1,4 @@
-var webSocketsServerPort = 1645; 
+var webSocketsServerPort = 1222; 
 
 var webSocketServer = require('websocket').server;
 var http = require('http');
@@ -24,7 +24,8 @@ class Room {
             this.code = code
         }
         this.playersList = [];
-        this.randomMonuments = data
+        this.randomMonuments = data;
+        this.finishArray = [];
     }
 
     get playerList() {
@@ -127,12 +128,14 @@ wsServer.on('request', function(request) {
 
             case 'startGame': 
                 if(message.data != null) {
-                    startAllPlayerGame(getRoom(message.data))
+                    let gRoom = getRoom(message.data)
+                    setFinishArray(gRoom)
+                    startAllPlayerGame(gRoom)
                 }
                 break;
 
             case "newGPSPosition":
-                console.log(message.data)
+                //console.log(message.data)
                 refreshPlayerPosition(getRoom(message.data.code), message.data.player, message.data.position)
                 break;
         }
@@ -143,6 +146,20 @@ wsServer.on('request', function(request) {
     // TODO
     });
 });
+
+function setFinishArray(room) {
+    for(let i = 0; i < room.playerList.length; i++) {
+
+        let actualPlayer = room.playerList[i]
+        room.finishArray[actualPlayer.id] = []
+        let pMon = room.finishArray[actualPlayer.id]
+
+        for(let j = 0; j < room.randomMonuments.length; j++) {
+            let actualMon = room.randomMonuments[j]
+            pMon[actualMon.recordid] = false
+        }
+    }
+}
 
 function refreshPlayerPosition(room, player, position) {
 

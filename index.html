@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/css/style.css" rel="stylesheet">
+    <title>Annecy GO</title>
+</head>
+<body>
+    <h1>AnnecyGO Dashboard</h1>
+
+    <section class="content">
+
+        <section class="stats">
+            <div class="roomsOnlineContent">
+                <h2>Rooms Online</h2>
+                <div class="onlineRooms">0</div>
+            </div>
+            <div class="roomsOnlineContent">
+                <h2>Players Online</h2>
+                <div class="onlinePlayers">0</div>
+            </div>
+        </section>
+
+        <div class="questionsContent">
+            <h2>Questions : </h2>
+            <div class="questions"></div>
+            <hr>
+            <h2>Ajouter une question : </h2>
+            <div>
+                <textarea class="formQuestion" cols="30" rows="10" placeholder="Question"></textarea>
+                <div class="radioContent">
+                    <label for="true">True</label>
+                    <input type="radio" name="answer" value="true" id="true" checked>
+                    <label for="false">False</label>
+                    <input type="radio" name="answer" value="false" id="false">
+                </div>
+                <textarea class="formComment" cols="30" rows="10" placeholder="Comment"></textarea>
+                <br>
+                <button class="formAdd">Ajouter</button>
+            </div>
+        </div>
+    </section>
+    
+    <script src="/js/socket.io.min.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>

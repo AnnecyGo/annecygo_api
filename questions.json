@@ -1,0 +1,39 @@
+{
+  "questions": [
+    {
+      "question": "le Ciel est bleu à Annecy",
+      "answer": true,
+      "comment": "Lève les yeux"
+    },
+    {
+      "question": "le nom de la rivière qui traverse la ville est le Thiou ?",
+      "answer": true,
+      "comment": "Le Thiou la petite rivière de 3,5 km de long qui t…e déversoir naturel du lac d'Annecy dans le Fier."
+    },
+    {
+      "question": "l'arquebuse est l'alcool local d'Annecy ?",
+      "answer": false,
+      "comment": "C'est le génépi l’un des emblèmes de la Haute-Savo…te montagne (entre 2500 à 3200 mètres d’altitude)"
+    },
+    {
+      "question": "au dernier recensement le nombre d'habitants d'Annecy est 52 000 habitants ?",
+      "answer": true,
+      "comment": "La population légale 2018 pour Annecy était de 131 481 habitants"
+    },
+    {
+      "question": "Le nom du navire qui a coulé dans le lac d'Annecy le 12 mars 1971 est le France?",
+      "answer": true,
+      "comment": "C'est bien la carcasse du France qui repose à 30 mètres de profondeurs"
+    },
+    {
+      "question": "La formation du lac d'Annecy remonte à 51 000 ans durant une ère glacière",
+      "answer": false,
+      "comment": "La formation du lac remonté à plus de 18 000 lors de la fonte des glaciers des alpes"
+    },
+    {
+      "question": "Le Palais de I'Île d'Annecy à autrefois été utilisé comme Prison",
+      "answer": true,
+      "comment": "En 1325 du à sa place stratégique"
+    }
+  ]
+}

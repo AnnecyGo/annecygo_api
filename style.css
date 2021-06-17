@@ -1,0 +1,84 @@
+* {
+    margin: 0;
+    padding: 0;
+    font-family: arial;
+}
+
+h1 {
+    text-align: center;
+    padding: 50px;
+}
+
+.content {
+    margin: 5%;
+    width: 90%;
+}
+
+.roomsOnlineContent {
+    display: flex;
+    flex-direction: column;
+    width: 200px;
+    align-items: center;
+}
+
+.onlineRooms {
+    width: 200px;
+    height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #ff4040;
+    border-radius: 15px;
+    font-weight: bold;
+    color: white;
+    font-size: 50px;
+}
+
+.onlinePlayers {
+    width: 200px;
+    height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #4093ff;
+    border-radius: 15px;
+    font-weight: bold;
+    color: white;
+    font-size: 50px;
+}
+
+.questionsContent {
+    margin-top: 100px;
+}
+
+hr {
+    margin: auto;
+    margin-top: 50px;
+    margin-bottom: 50px;
+    width: 500px;
+}
+
+.deleteContent {
+    display: flex;
+    align-items: center;
+}
+
+.removeQuestion {
+    margin: 10px;
+    margin-right: 20px;
+    cursor: pointer;
+    padding: 5px;
+    background-color: red;
+    border-radius: 100%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    color: white;
+    align-items: center;
+    justify-content: center;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-evenly;
+}

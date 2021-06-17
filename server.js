@@ -1,5 +1,7 @@
 var webSocketsServerPort = 1645; 
 
+let editJsonFile = require("edit-json-file");
+
 var webSocketServer = require('websocket').server;
 var http = require('http');
 const axios = require('axios').default
@@ -17,6 +19,9 @@ var playersList = [];
 var roomsList = [];
 var questions = [];
 
+let questionsFile = editJsonFile(`${__dirname}/questions.json`);
+questions = questionsFile.get("questions")
+
 class Room {
     constructor(data, code = null) {
         if(code == null) {
@@ -25,7 +30,8 @@ class Room {
             this.code = code
         }
         this.playersList = [];
-        this.randomMonuments = data
+        this.randomMonuments = data;
+        this.finishArray = [];
     }
 
     get playerList() {
@@ -49,30 +55,6 @@ class Player {
         this.position = [0,0]
     }
 }
-
-class Question {
-    constructor(question, answer, comment) {
-      this.question = question;
-      this.answer = answer;
-      this.comment = comment;
-    }
-}
-
-let question1 = new Question("le Ciel est bleu à Annecy", true, "Lève les yeux");
-let question2 = new Question("le nom de la rivière qui traverse la ville est le Thiou ?",true, "Le Thiou la petite rivière de 3,5 km de long qui travèrse Annecy. Elle est le déversoir naturel du lac d'Annecy dans le Fier.");
-let question3 = new Question("l'arquebuse est l'alcool local d'Annecy ?",false,"C'est le génépi l’un des emblèmes de la Haute-Savoie, Plante rare qu’il est exclusivement possible de trouver en haute montagne (entre 2500 à 3200 mètres d’altitude)");
-let question4 = new Question("au dernier recensement le nombre d'habitants d'Annecy est 52 000 habitants ?",true,"La population légale 2018 pour Annecy était de 131 481 habitants");
-let question5 = new Question("Le nom du navire qui a coulé dans le lac d'Annecy le 12 mars 1971 est le France?", true,"C'est bien la carcasse du France qui repose à 30 mètres de profondeurs");
-let question6 = new Question( "La formation du lac d'Annecy remonte à 51 000 ans durant une ère glacière",false,"La formation du lac remonté à plus de 18 000 lors de la fonte des glaciers des alpes");
-let question7 = new Question("Le Palais de I'Île d'Annecy à autrefois été utilisé comme Prison",true,"En 1325 du à sa place stratégique");
-
-questions.push(question1);
-questions.push(question2);
-questions.push(question3);
-questions.push(question4);
-questions.push(question5);
-questions.push(question6);
-questions.push(question7);
 
 /*
 var testRoom = new Room("room01")
@@ -152,7 +134,9 @@ wsServer.on('request', function(request) {
 
             case 'startGame': 
                 if(message.data != null) {
-                    startAllPlayerGame(getRoom(message.data))
+                    let gRoom = getRoom(message.data)
+                    setFinishArray(gRoom)
+                    startAllPlayerGame(gRoom)
                 }
                 break;
 
@@ -179,8 +163,15 @@ wsServer.on('request', function(request) {
 });
 
 function updateScorePlayer(data) {
+    let nRoom = getRoom(data.room)
+    
+    console.log(nRoom.finishArray)
+
     let player = getPlayer(data.room, data.id)
     player.score += getNewScore(data.answer)
+    nRoom.finishArray[data.id][data.monumentId] = true
+
+    console.log(nRoom.finishArray)
 }
 /**
  * 
@@ -194,11 +185,11 @@ function newMonumentQuizz(data) {
 
     let player = getPlayer(data.room, data.id)
 
-    let question = quesions[getRndInteger(0, quesions.length - 1)]
+    let question = questions[getRndInteger(0, questions.length - 1)]
 
     //var monument = {"monumentId": player.admin, "question": question}
 
-    var monument = {"monumentId": room.randomMonuments, "question": question}
+    var monument = {"monumentId": rTemp.randomMonuments[0].recordid, "quizz": question}
 
     var message = JSON.stringify({'action': 'newMonumentQuizz','data': monument});
 
@@ -212,6 +203,20 @@ function getPlayer(code, id) {
     for(let player of room.playerList) {
         if(player.id == id) {
             return player
+        }
+    }
+}
+
+function setFinishArray(room) {
+    for(let i = 0; i < room.playerList.length; i++) {
+
+        let actualPlayer = room.playerList[i]
+        room.finishArray[actualPlayer.id] = []
+        let pMon = room.finishArray[actualPlayer.id]
+
+        for(let j = 0; j < room.randomMonuments.length; j++) {
+            let actualMon = room.randomMonuments[j]
+            pMon[actualMon.recordid] = false
         }
     }
 }
@@ -388,3 +393,53 @@ function generateRoomToken() {
 function getRndInteger(min, max) {
     return Math.floor(Math.random() * (max - min) ) + min;
 }
+
+// Node JS
+
+let express = require("express")
+let socketio = require("socket.io")
+
+let app = express()
+let serverNode = http.Server(app)
+let io = socketio(serverNode)
+
+
+app.use("/css", express.static( __dirname))
+app.use("/js", express.static( __dirname))
+
+app.get("/", (req, res) => {
+    res.sendFile(__dirname + "/index.html")
+})
+
+io.on("connect", (socket) => { 
+
+    socket.on("reloadQuestions", (data) => {
+        socket.emit("reloadQuestions", questions)
+    })
+
+    socket.on("getAllRooms", (data) => {
+
+        let count = 0
+
+        for(let room of roomsList) {
+            count += room.playerList.length
+        }
+
+        socket.emit("getAllRooms", {"rooms": roomsList.length, "players": count})
+    })
+
+    socket.on("addQuestion", (data) => {
+        questionsFile.append("questions", data)
+        questionsFile.save()
+        //questions = questionsFile.toObject()
+        socket.emit("reloadQuestions", questions)
+    })
+
+    socket.on("removeQuestion", (nb) => {
+        questionsFile.get("questions").splice(nb, 1)
+        questionsFile.save()
+        socket.emit("reloadQuestions", questions)
+    })
+})
+
+serverNode.listen(1646)

@@ -84,7 +84,7 @@ wsServer.on('request', function(request) {
                 savePlayer(nPlayer)
 
                 createNewRoom().then((room) => {
-                    // console.log(room)
+                    //console.log(room)
                     // Add player to room
                     addPlayerToRoom(room, nPlayer)
                     // generate QR Code
@@ -153,6 +153,9 @@ wsServer.on('request', function(request) {
             case "newMonumentQuizz":
                 newMonumentQuizz(message.data)
                 break;
+            case "validateMonument":
+                validateMonument(message.data)
+                break;
         }
     });
 
@@ -164,35 +167,33 @@ wsServer.on('request', function(request) {
 
 function updateScorePlayer(data) {
     let nRoom = getRoom(data.room)
-    
-    console.log(nRoom.finishArray)
+    //console.log(nRoom.finishArray)
 
     let player = getPlayer(data.room, data.id)
     player.score += getNewScore(data.answer)
-    nRoom.finishArray[data.id][data.monumentId] = true
-
-    console.log(nRoom.finishArray)
+    //console.log(nRoom.finishArray)
 }
+
+
+function validateMonument(data) {
+    let nRoom = getRoom(data.room)
+    let player = getPlayer(data.room, data.id)
+    
+    nRoom.finishArray[data.id][data.monumentId] = true
+}
+
 /**
  * 
  * TODO ADD DETECTION PLAYER GPS // MONUMENT GPS
  */
-function newMonumentQuizz(data) {
-
-    // temporary
-    let rTemp = getRoom(data.room)
-    // end
-
-    let player = getPlayer(data.room, data.id)
-
+function newMonumentQuizz(player,monument) {
     let question = questions[getRndInteger(0, questions.length - 1)]
 
-    //var monument = {"monumentId": player.admin, "question": question}
+    var monumentJson = {"monumentId": monument.recordid, "quizz": question}
 
-    var monument = {"monumentId": rTemp.randomMonuments[0].recordid, "quizz": question}
+    var message = JSON.stringify({'action': 'newMonumentQuizz','data': monumentJson});
 
-    var message = JSON.stringify({'action': 'newMonumentQuizz','data': monument});
-
+    // console.log(player)
     if(player.connection != null) {
         player.connection.sendUTF(message);
     }
@@ -230,16 +231,29 @@ function getNewScore(answer) {
 }
 
 function refreshPlayerPosition(room, player, position) {
-
     for(let rPlayer of room.playersList) {
         if(rPlayer.id == player) {
             rPlayer.position = [position.latitude, position.longitude]
+            checkDistanceMonuPlayer(rPlayer, room)
         }
     }
 
     var message = JSON.stringify({'action': 'refreshPlayerPost','data': room.randomMonuments});
 
     sendPlayersPosition(room.playersList)
+
+}
+
+function checkDistanceMonuPlayer(player, room){
+    for(let rMonument of room.randomMonuments) {
+       var result = distanceMonuPlayer(rMonument.geometry.coordinates[1],rMonument.geometry.coordinates[0],player.position[0],player.position[1])
+       if(result){
+        if(!room.finishArray[player.id][rMonument.recordid]){
+            //console.log("PAF")
+            newMonumentQuizz(player,rMonument)
+        }
+       }
+    }
 }
 
 function sendPlayersPosition(playersList) {
@@ -323,6 +337,38 @@ function sendMonuments(code) {
         }
     }
 }
+
+//Comparaison GPS point monument et player
+function distanceMonuPlayer(latMonu, lonMonu, latPlayer, lonPlayer) {
+    //les calculs sont en miles
+
+	if ((latMonu == latPlayer) && (lonMonu == lonPlayer)) {
+		return 0;
+	}
+	else {
+		var radlat1 = Math.PI * latMonu/180
+		var radlat2 = Math.PI * latPlayer/180
+		var theta = lonMonu-lonPlayer
+		var radtheta = Math.PI * theta/180
+		var dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta)
+		if (dist > 1) {
+			dist = 1
+		}
+		dist = Math.acos(dist);
+		dist = dist * 180/Math.PI
+		dist = dist * 60 * 1.1515
+        //transformation en kilometres
+		dist = dist * 1.609344
+        if (dist < 0.03 )
+            return true
+
+        // console.log("Monument: "+latMonu + " "+ lonMonu)
+        // console.log("Player: "+latPlayer + " "+ lonPlayer)
+        // console.log(dist)
+        return false
+	}
+}
+//---------
 
 function sendPlayersList(code) {
     let room = getRoom(code)

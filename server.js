@@ -32,6 +32,7 @@ class Room {
         this.playersList = [];
         this.randomMonuments = data;
         this.finishArray = [];
+        this.finish = false
     }
 
     get playerList() {
@@ -149,6 +150,10 @@ wsServer.on('request', function(request) {
                 // console.log(message.data)
                 updateScorePlayer(message.data)
                 break;
+            
+            case "checkEndResponse":
+                checkEndResponse(message.data)
+                break;
 
             case "newMonumentQuizz":
                 newMonumentQuizz(message.data)
@@ -165,27 +170,82 @@ wsServer.on('request', function(request) {
     });
 });
 
-function updateScorePlayer(data) {
+function checkEndResponse(data) {
     let nRoom = getRoom(data.room)
-    //console.log(nRoom.finishArray)
-
-    let player = getPlayer(data.room, data.id)
-    player.score += getNewScore(data.answer)
-    //console.log(nRoom.finishArray)
+    
+    if(nRoom.finish) {
+        finishGame(nRoom)
+    }
 }
 
+function updateScorePlayer(data) {
+    let nRoom = getRoom(data.room)
+    let player = getPlayer(data.room, data.id)
+    player.score += getNewScore(data.answer)
+}
 
 function validateMonument(data) {
     let nRoom = getRoom(data.room)
     let player = getPlayer(data.room, data.id)
     
     nRoom.finishArray[data.id][data.monumentId] = true
+
+    checkRoomFinish(nRoom)
 }
 
-/**
- * 
- * TODO ADD DETECTION PLAYER GPS // MONUMENT GPS
- */
+function checkRoomFinish(room) {
+    for(let player of room.playerList) {
+        if(!checkPlayerFinish(room, player.id)) {
+            return
+        }
+    }
+
+    room.finish = true
+}
+
+function checkPlayerFinish(room, id) {
+    for(let rMon of room.randomMonuments) {
+        if(!room.finishArray[id][rMon.recordid]) {
+            return false
+        }
+    }
+
+    return true
+}
+
+function finishGame(room) {
+    console.log("func finish game")
+
+    let best = getBestPlayer(room)
+
+    for(let player of room.playerList) {
+
+        let screen = false
+        if(player.id == best.id) {
+            screen = true
+        }
+
+        var message = JSON.stringify({'action': 'endGame', 'screen': screen, 'winner': best.name, 'score': best.score});
+
+        if(player.connection != null) {
+            player.connection.sendUTF(message);
+        }
+    }
+}
+
+function getBestPlayer(room) {
+
+    let best = room.playerList[0]
+
+    for(let player of room.playerList) {
+        if(player.score > best.score) {
+            best = player
+        }
+    }
+
+    return best
+}
+
 function newMonumentQuizz(player,monument) {
     let question = questions[getRndInteger(0, questions.length - 1)]
 
@@ -193,7 +253,6 @@ function newMonumentQuizz(player,monument) {
 
     var message = JSON.stringify({'action': 'newMonumentQuizz','data': monumentJson});
 
-    // console.log(player)
     if(player.connection != null) {
         player.connection.sendUTF(message);
     }
@@ -249,7 +308,6 @@ function checkDistanceMonuPlayer(player, room){
        var result = distanceMonuPlayer(rMonument.geometry.coordinates[1],rMonument.geometry.coordinates[0],player.position[0],player.position[1])
        if(result){
         if(!room.finishArray[player.id][rMonument.recordid]){
-            //console.log("PAF")
             newMonumentQuizz(player,rMonument)
         }
        }
@@ -362,9 +420,6 @@ function distanceMonuPlayer(latMonu, lonMonu, latPlayer, lonPlayer) {
         if (dist < 0.03 )
             return true
 
-        // console.log("Monument: "+latMonu + " "+ lonMonu)
-        // console.log("Player: "+latPlayer + " "+ lonPlayer)
-        // console.log(dist)
         return false
 	}
 }
@@ -405,29 +460,7 @@ function getRoom(code) {
         }
     }
 }
-/*
-// broadcast all players playersList
-function BroadcastPlayersList(){
 
-    var playersId = []
-
-    for(let player of playersList) {
-        playersId.push(player.getId());
-    }
-
-    for(let player of playersList) {
-        var message = JSON.stringify({
-            'action': 'players_list',
-            'data': playersId
-        });
-    }
-
-    for(let player of playersList) {
-        console.log("send to " + player.name)
-        player.connection.sendUTF(message);
-    }
-}
-*/
 function generateRoomToken() {
     var firstPart = (Math.random() * 46656) | 0;
     var secondPart = (Math.random() * 46656) | 0;

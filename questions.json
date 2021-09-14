@@ -1,11 +1,6 @@
 {
   "questions": [
     {
-      "question": "le Ciel est bleu à Annecy",
-      "answer": true,
-      "comment": "Lève les yeux"
-    },
-    {
       "question": "le nom de la rivière qui traverse la ville est le Thiou ?",
       "answer": true,
       "comment": "Le Thiou la petite rivière de 3,5 km de long qui t…e déversoir naturel du lac d'Annecy dans le Fier."

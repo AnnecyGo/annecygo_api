@@ -82,10 +82,11 @@ wsServer.on('request', function(request) {
                 // Create new player
                 let nPlayer = newPlayer(player, message.data, connection)
                 nPlayer.admin = true
+
                 savePlayer(nPlayer)
 
                 createNewRoom().then((room) => {
-                    //console.log(room)
+                    // console.log(room)
                     // Add player to room
                     addPlayerToRoom(room, nPlayer)
                     // generate QR Code
@@ -341,7 +342,7 @@ function getRoom(code) {
 // create new room
 async function  createNewRoom() {
     try {
-        let res = await axios.get('http://86.200.111.40:1332/annecyRandomMonuments')
+        let res = await axios.get('http://86.200.225.57:1332/annecyRandomMonuments')
         let room = new Room(res.data)
         roomsList.push(room)
         return room
